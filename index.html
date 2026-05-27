@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M3 Chicken POS</title>
+  <meta name="theme-color" content="#e11d48">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./assets/styles.css">
+  <style>[x-cloak] { display: none !important; }</style>
+  <script>
+    window.m3chickenAuth = {
+      getCurrentUser() {
+        try { return JSON.parse(localStorage.getItem('m3chicken_user')); } catch { return null; }
+      },
+      isLoggedIn() {
+        return !!localStorage.getItem('m3chicken_user') && !!localStorage.getItem('m3chicken_token');
+      },
+      requireRole(role) {
+        const u = this.getCurrentUser();
+        return u && u.role === role;
+      },
+      logout() {
+        localStorage.removeItem('m3chicken_token');
+        localStorage.removeItem('m3chicken_user');
+        location.reload();
+      }
+    };
+    window.addEventListener('error', (e) => {
+      console.error('App error:', e.error || e.message);
+    });
+  </script>
+  <script src="./lib/tailwind.js"></script>
+  <script src="./lib/dexie.js"></script>
+  <script>window.M3_API_BASE_URL = window.location.origin;</script>
+  <script type="module" src="./db/schema.js"></script>
+  <script type="module" src="./db/seed.js"></script>
+  <script type="module" src="./assets/bootstrap.js"></script>
+  <script defer src="./lib/alpine.js"></script>
+</head>
+<body>
+  <div
+    class="app-root"
+    x-cloak
+    x-data="appState()"
+    x-init="if (showLogin) checkBackend()"
+    x-effect="if (ownerPages.includes(page) && !isOwner) page = 'dashboard'"
+  >
+    <div class="app-shell no-print">
+      <header class="header">
+        <div>
+          <strong>M3 Chicken</strong> <span class="header-sub">| POS System</span>
+        </div>
+        <div class="header-address">
+          Owner: Selino Anggri &bull; 081373546317<br>
+          Jalan Pasar Raya Sidodadi BK 9, OKU Timur, Sumatera Selatan
+        </div>
+        <template x-if="user">
+          <div class="header-user">
+            <span x-text="user.nama"></span>
+            <span class="role-badge" x-text="user.role"></span>
+            <button type="button" class="btn-secondary" @click="logout">Logout</button>
+          </div>
+        </template>
+      </header>
+
+      <div class="login-overlay" x-show="showLogin" x-cloak>
+        <div class="card login-card">
+          <h2 class="login-title">Login M3 Chicken</h2>
+          <p class="backend-status" x-show="authMode === 'api'">
+            <span class="status-dot online"></span> Backend terhubung — login via database server
+          </p>
+          <p class="backend-status offline" x-show="authMode === 'offline'">
+            <span class="status-dot offline"></span> Mode standalone — login via IndexedDB lokal
+          </p>
+          <p x-show="info" x-text="info" class="login-info"></p>
+          <form @submit.prevent="submit">
+            <div class="form-group">
+              <label>Username</label>
+              <input class="input-field" type="text" x-model="username" required autofocus :disabled="loading">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input class="input-field" type="password" x-model="password" required :disabled="loading">
+            </div>
+            <p x-show="error" x-text="error" class="form-error"></p>
+            <button
+              type="submit"
+              class="btn-primary btn-block btn-login"
+              :disabled="loading"
+            ><span x-text="buttonLabel">Login</span></button>
+          </form>
+          <p class="login-hint">Owner: admin / admin123 &bull; Kasir: kasir / kasir123</p>
+        </div>
+      </div>
+
+      <div class="layout">
+        <nav class="sidebar">
+          <ul class="nav-list">
+            <li><a href="#" :class="{ active: page === 'dashboard' }" @click.prevent="goPage('dashboard')">Dashboard</a></li>
+            <li><a href="#" :class="{ active: page === 'pos' }" @click.prevent="goPage('pos')">Transaksi</a></li>
+            <li><a href="#" :class="{ active: page === 'history' }" @click.prevent="goPage('history')">Riwayat</a></li>
+            <li><a href="#" :class="{ active: page === 'menu' }" @click.prevent="goPage('menu')">Menu</a></li>
+            <li><a href="#" :class="{ active: page === 'customer' }" @click.prevent="goPage('customer')">Pelanggan</a></li>
+            <template x-if="isOwner">
+              <li class="nav-divider">— Owner —</li>
+            </template>
+            <template x-if="isOwner">
+              <li><a href="#" :class="{ active: page === 'supplier' }" @click.prevent="goPage('supplier')">Supplier</a></li>
+            </template>
+            <template x-if="isOwner">
+              <li><a href="#" :class="{ active: page === 'ledger' }" @click.prevent="goPage('ledger')">Buku Besar Toko</a></li>
+            </template>
+            <template x-if="isOwner">
+              <li><a href="#" :class="{ active: page === 'cashbook' }" @click.prevent="goPage('cashbook')">Cashbook Pribadi</a></li>
+            </template>
+            <template x-if="isOwner">
+              <li><a href="#" :class="{ active: page === 'settings' }" @click.prevent="goPage('settings')">Pengaturan</a></li>
+            </template>
+          </ul>
+        </nav>
+
+        <main class="main-content">
+          <template x-if="page === 'dashboard' && user">
+            <div
+              x-data="dashboardModule()"
+              x-init="await initModulePage($data, '/modules/dashboard/dashboard.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'menu' && user">
+            <div
+              x-data="menuModule()"
+              x-init="await initModulePage($data, '/modules/menu/menu.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'pos' && user">
+            <div
+              x-data="posModule()"
+              x-init="await initModulePage($data, '/modules/transaction/pos.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'history' && user">
+            <div
+              x-data="historyModule()"
+              x-init="await initModulePage($data, '/modules/history/history.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'customer' && user">
+            <div
+              x-data="customerModule()"
+              x-init="await initModulePage($data, '/modules/customer/customer.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'supplier' && isOwner && user">
+            <div
+              x-data="supplierModule()"
+              x-init="await initModulePage($data, '/modules/supplier/supplier.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'ledger' && isOwner && user">
+            <div
+              x-data="ledgerModule()"
+              x-init="await initModulePage($data, '/modules/ledger/ledger.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'cashbook' && isOwner && user">
+            <div
+              x-data="cashbookModule()"
+              x-init="await initModulePage($data, '/modules/cashbook/cashbook.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="page === 'settings' && isOwner && user">
+            <div
+              x-data="settingsModule()"
+              x-init="await initModulePage($data, '/modules/settings/settings.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <template x-if="!user">
+            <div class="card">
+              <h1>Selamat Datang di M3 Chicken POS</h1>
+              <p>Silakan login untuk mulai menggunakan aplikasi.</p>
+            </div>
+          </template>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/neutralino.js"></script>
+  <script>
+    if (typeof Neutralino !== 'undefined' && typeof window.NL_PORT !== 'undefined') {
+      Neutralino.init();
+    }
+    if ('serviceWorker' in navigator && (typeof Neutralino === 'undefined' || typeof window.NL_PORT === 'undefined')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

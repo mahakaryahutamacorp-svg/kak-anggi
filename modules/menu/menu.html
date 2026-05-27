@@ -1,0 +1,43 @@
+<div class="card">
+  <h2 class="section-title">Manajemen Menu Ayam & Minuman</h2>
+  <template x-if="isOwner">
+    <form @submit.prevent="saveMenu" class="inline-form">
+      <input class="input-field flex-grow" x-model="form.nama" placeholder="Nama Menu" required>
+      <input class="input-field input-narrow" x-model.number="form.harga" type="number" min="0" placeholder="Harga" required>
+      <input class="input-field input-narrow" x-model.number="form.stok" type="number" min="0" placeholder="Stok" required>
+      <select class="input-field" x-model="form.kategori" required>
+        <option value="Ayam">Ayam</option>
+        <option value="Minuman">Minuman</option>
+      </select>
+      <button type="submit" class="btn-primary">Simpan</button>
+      <button type="button" class="btn-secondary" x-show="form.id" @click="resetForm()">Batal</button>
+    </form>
+  </template>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Kategori</th>
+        <th>Harga</th>
+        <th>Stok</th>
+        <template x-if="isOwner"><th>Aksi</th></template>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="item in menuList" :key="item.id">
+        <tr>
+          <td x-text="item.nama"></td>
+          <td x-text="item.kategori"></td>
+          <td x-text="'Rp ' + Number(item.harga).toLocaleString('id-ID')"></td>
+          <td x-text="item.stok"></td>
+          <template x-if="isOwner">
+            <td>
+              <button type="button" class="btn-secondary btn-sm" @click="editMenu(item)">Edit</button>
+              <button type="button" class="btn-secondary btn-sm btn-danger-text" @click="deleteMenu(item.id)">Hapus</button>
+            </td>
+          </template>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+</div>

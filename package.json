@@ -1,0 +1,11 @@
+{
+  "name": "aplikasi-kasir-m3chicken",
+  "version": "1.0.0",
+  "private": true,
+  "description": "M3 Chicken POS — aplikasi kasir offline-first",
+  "scripts": {
+    "start": "npm start --prefix backend",
+    "dev": "npm run dev --prefix backend",
+    "install:backend": "npm install --prefix backend"
+  }
+}

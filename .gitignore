@@ -1,0 +1,14 @@
+node_modules/
+backend/node_modules/
+backend/data/*.db
+backend/data/*.db-journal
+PORTABLE_APP/.tmp/
+desktop-build/dist/
+desktop-build/bin/
+.next/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+*.zip

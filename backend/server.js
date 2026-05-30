@@ -32,6 +32,18 @@ function initDatabase() {
       telepon TEXT DEFAULT ''
     );
 
+    -- [MULTI-STORE] Tabel toko untuk fitur multi-toko
+    CREATE TABLE IF NOT EXISTS stores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kode_toko TEXT UNIQUE NOT NULL,
+      nama_toko TEXT NOT NULL,
+      alamat TEXT,
+      telepon TEXT,
+      is_active INTEGER DEFAULT 1,
+      is_default INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nama TEXT UNIQUE NOT NULL,
@@ -109,11 +121,43 @@ function initDatabase() {
     );
   `);
 
+  runStoreMigrations(); // [MULTI-STORE]
+  seedStores(); // [MULTI-STORE]
   seedCategories();
   seedUsers();
   seedMenu();
   seedCustomers();
   seedSuppliers();
+}
+
+// [MULTI-STORE] Migrasi additive: tambah kolom store_id ke tabel yang sudah ada
+// tanpa menghapus/rename kolom apa pun. Idempotent (aman dijalankan berulang).
+// Foreign key store_id -> stores(id) didokumentasikan di sini, tidak di-enforce.
+function runStoreMigrations() {
+  const targets = ['transactions', 'menu', 'customers', 'suppliers'];
+  for (const table of targets) {
+    const tableExists = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+      .get(table);
+    if (!tableExists) continue;
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+    const hasStoreId = columns.some((col) => col.name === 'store_id');
+    if (!hasStoreId) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN store_id INTEGER DEFAULT 1`);
+      console.log(`Database: kolom store_id ditambahkan ke ${table}`);
+    }
+  }
+}
+
+// [MULTI-STORE] Seed 1 toko default (id=1) supaya data lama tidak orphan.
+function seedStores() {
+  const count = db.prepare('SELECT COUNT(*) AS total FROM stores').get().total;
+  if (count === 0) {
+    db.prepare(
+      'INSERT OR IGNORE INTO stores (id, kode_toko, nama_toko, is_default) VALUES (?, ?, ?, ?)'
+    ).run(1, 'TOKO-01', 'Toko Utama', 1);
+    console.log('Database: toko default berhasil di-seed');
+  }
 }
 
 function seedCategories() {
@@ -504,17 +548,134 @@ app.delete('/api/categories/:id', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+// [MULTI-STORE] --- CRUD Stores ---
+app.get('/api/stores', authMiddleware, (_req, res) => {
+  res.json(db.prepare('SELECT * FROM stores ORDER BY is_default DESC, nama_toko').all());
+});
+
+app.get('/api/stores/:id', authMiddleware, (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID tidak valid' });
+  const row = db.prepare('SELECT * FROM stores WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Toko tidak ditemukan' });
+  res.json(row);
+});
+
+app.post('/api/stores', authMiddleware, (req, res) => {
+  const { kode_toko, nama_toko, alamat, telepon, is_active } = req.body || {};
+  if (!kode_toko || !nama_toko) {
+    return res.status(400).json({ error: 'Kode toko dan nama toko wajib diisi' });
+  }
+  try {
+    const now = new Date().toISOString();
+    const result = db
+      .prepare(`
+        INSERT INTO stores (kode_toko, nama_toko, alamat, telepon, is_active, is_default, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?)
+      `)
+      .run(
+        kode_toko.trim(),
+        nama_toko.trim(),
+        alamat || '',
+        telepon || '',
+        is_active === undefined ? 1 : Number(is_active),
+        now
+      );
+    res.status(201).json(db.prepare('SELECT * FROM stores WHERE id = ?').get(result.lastInsertRowid));
+  } catch (e) {
+    if (e.message.includes('UNIQUE')) {
+      res.status(409).json({ error: 'Kode toko sudah digunakan' });
+    } else {
+      res.status(500).json({ error: 'Error membuat toko' });
+    }
+  }
+});
+
+app.put('/api/stores/:id', authMiddleware, (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID tidak valid' });
+  const existing = db.prepare('SELECT id FROM stores WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Toko tidak ditemukan' });
+  const { kode_toko, nama_toko, alamat, telepon, is_active } = req.body || {};
+  if (!kode_toko || !nama_toko) {
+    return res.status(400).json({ error: 'Kode toko dan nama toko wajib diisi' });
+  }
+  try {
+    db.prepare(`
+      UPDATE stores
+      SET kode_toko = ?, nama_toko = ?, alamat = ?, telepon = ?, is_active = ?
+      WHERE id = ?
+    `).run(
+      kode_toko.trim(),
+      nama_toko.trim(),
+      alamat || '',
+      telepon || '',
+      is_active === undefined ? 1 : Number(is_active),
+      id
+    );
+    res.json(db.prepare('SELECT * FROM stores WHERE id = ?').get(id));
+  } catch (e) {
+    if (e.message.includes('UNIQUE')) {
+      res.status(409).json({ error: 'Kode toko sudah digunakan' });
+    } else {
+      res.status(500).json({ error: 'Error mengupdate toko' });
+    }
+  }
+});
+
+// [MULTI-STORE] Hapus toko hanya jika tidak ada transaksi yang terkait.
+app.delete('/api/stores/:id', authMiddleware, (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID tidak valid' });
+  const store = db.prepare('SELECT * FROM stores WHERE id = ?').get(id);
+  if (!store) return res.status(404).json({ error: 'Toko tidak ditemukan' });
+  if (store.is_default) {
+    return res.status(409).json({ error: 'Toko default tidak dapat dihapus' });
+  }
+  const linked = db
+    .prepare('SELECT COUNT(*) AS total FROM transactions WHERE store_id = ?')
+    .get(id).total;
+  if (linked > 0) {
+    return res.status(409).json({ error: 'Toko memiliki transaksi terkait, tidak dapat dihapus' });
+  }
+  db.prepare('DELETE FROM stores WHERE id = ?').run(id);
+  res.json({ ok: true });
+});
+
+// [MULTI-STORE] Set toko default (hanya 1 toko default pada satu waktu).
+app.put('/api/stores/:id/default', authMiddleware, (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID tidak valid' });
+  const existing = db.prepare('SELECT id FROM stores WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Toko tidak ditemukan' });
+  const setDefault = db.transaction((storeId) => {
+    db.prepare('UPDATE stores SET is_default = 0').run();
+    db.prepare('UPDATE stores SET is_default = 1, is_active = 1 WHERE id = ?').run(storeId);
+  });
+  setDefault(id);
+  res.json(db.prepare('SELECT * FROM stores WHERE id = ?').get(id));
+});
+
 // --- CRUD Transactions (POS Checkout) ---
 app.get('/api/transactions', authMiddleware, (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, parseInt(req.query.limit) || 50);
   const offset = (page - 1) * limit;
   const tanggal = typeof req.query.tanggal === 'string' ? req.query.tanggal.trim() : '';
+  // [MULTI-STORE] Filter store_id opsional (backward compatible: tanpa param = semua toko)
+  const storeId = parseId(req.query.store_id);
 
-  const whereClause = tanggal
-    ? "WHERE DATE(t.created_at) = ? AND t.status != 'BATAL'"
-    : "WHERE t.status != 'BATAL'";
-  const params = tanggal ? [tanggal, limit, offset] : [limit, offset];
+  const conditions = ["t.status != 'BATAL'"];
+  const filterParams = [];
+  if (tanggal) {
+    conditions.push('DATE(t.created_at) = ?');
+    filterParams.push(tanggal);
+  }
+  if (storeId) {
+    conditions.push('t.store_id = ?');
+    filterParams.push(storeId);
+  }
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
   const transactions = db.prepare(`
     SELECT t.*, 
@@ -529,12 +690,11 @@ app.get('/api/transactions', authMiddleware, (req, res) => {
     GROUP BY t.id
     ORDER BY t.created_at DESC
     LIMIT ? OFFSET ?
-  `).all(...params);
+  `).all(...filterParams, limit, offset);
 
-  const countQuery = tanggal
-    ? db.prepare("SELECT COUNT(*) as count FROM transactions t WHERE DATE(t.created_at) = ? AND t.status != 'BATAL'")
-    : db.prepare("SELECT COUNT(*) as count FROM transactions t WHERE t.status != 'BATAL'");
-  const total = tanggal ? countQuery.get(tanggal) : countQuery.get();
+  const total = db
+    .prepare(`SELECT COUNT(*) as count FROM transactions t ${whereClause}`)
+    .get(...filterParams);
 
   res.json({
     data: transactions,
@@ -571,7 +731,7 @@ app.get('/api/transactions/:id', authMiddleware, (req, res) => {
 
 // Create Transaction (POS Checkout)
 app.post('/api/transactions', authMiddleware, (req, res) => {
-  const { pelanggan_id, items, metode_pembayaran, diskon, catatan } = req.body || {};
+  const { pelanggan_id, items, metode_pembayaran, diskon, catatan, store_id } = req.body || {};
   
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Minimal harus ada 1 item' });
@@ -580,6 +740,7 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
   try {
     const now = new Date().toISOString();
     const nomorTransaksi = `TRX-${Date.now()}`;
+    const storeId = parseId(store_id) || 1; // [MULTI-STORE] default toko 1
     
     // Calculate totals
     let subtotal = 0;
@@ -599,8 +760,8 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
 
     // Insert transaction
     const txResult = db.prepare(`
-      INSERT INTO transactions (nomor_transaksi, pelanggan_id, user_id, subtotal, total, diskon, metode_pembayaran, catatan, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO transactions (nomor_transaksi, pelanggan_id, user_id, subtotal, total, diskon, metode_pembayaran, catatan, store_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       nomorTransaksi,
       pelanggan_id || null,
@@ -610,6 +771,7 @@ app.post('/api/transactions', authMiddleware, (req, res) => {
       diskonAmount,
       metode_pembayaran || 'TUNAI',
       catatan || '',
+      storeId,
       now,
       now
     );

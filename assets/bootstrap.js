@@ -11,6 +11,7 @@ import { cashbookModule } from '../modules/cashbook/cashbook.js';
 import { dashboardModule } from '../modules/dashboard/dashboard.js';
 import { historyModule } from '../modules/history/history.js';
 import { settingsModule } from '../modules/settings/settings.js';
+import { storeModule } from '../modules/store/store.js'; // [MULTI-STORE]
 import { loadSettings } from '../modules/shared/settings.js';
 import { initModulePage } from '../modules/shared/loadHtml.js';
 
@@ -29,6 +30,7 @@ window.cashbookModule = cashbookModule;
 window.dashboardModule = dashboardModule;
 window.historyModule = historyModule;
 window.settingsModule = settingsModule;
+window.storeModule = storeModule; // [MULTI-STORE]
 
 loadSettings().catch((err) => console.warn('[M3] Settings load:', err));
 
@@ -46,6 +48,7 @@ function registerAlpineComponents() {
   Alpine.data('dashboardModule', dashboardModule);
   Alpine.data('historyModule', historyModule);
   Alpine.data('settingsModule', settingsModule);
+  Alpine.data('storeModule', storeModule); // [MULTI-STORE]
 }
 
 document.addEventListener('alpine:init', registerAlpineComponents);

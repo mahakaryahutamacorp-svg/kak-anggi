@@ -43,7 +43,7 @@
     class="app-root"
     x-cloak
     x-data="appState()"
-    x-init="if (showLogin) checkBackend()"
+    x-init="if (showLogin) checkBackend(); initStores()"
     x-effect="if (ownerPages.includes(page) && !isOwner) page = 'dashboard'"
   >
     <div class="app-shell no-print">
@@ -57,6 +57,23 @@
         </div>
         <template x-if="user">
           <div class="header-user">
+            <!-- [MULTI-STORE] Indikator/switcher toko aktif -->
+            <template x-if="storeOptions.length">
+              <div class="header-store">
+                <span class="role-badge" x-text="activeStoreName"></span>
+                <template x-if="isOwner">
+                  <select
+                    class="input-field store-switcher"
+                    :value="activeStoreId"
+                    @change="changeActiveStore($event.target.value)"
+                  >
+                    <template x-for="s in storeOptions" :key="s.id">
+                      <option :value="s.id" x-text="s.nama_toko"></option>
+                    </template>
+                  </select>
+                </template>
+              </div>
+            </template>
             <span x-text="user.nama"></span>
             <span class="role-badge" x-text="user.role"></span>
             <button type="button" class="btn-secondary" @click="logout">Logout</button>
@@ -113,6 +130,9 @@
             </template>
             <template x-if="isOwner">
               <li><a href="#" :class="{ active: page === 'cashbook' }" @click.prevent="goPage('cashbook')">Cashbook Pribadi</a></li>
+            </template>
+            <template x-if="isOwner">
+              <li><a href="#" :class="{ active: page === 'store' }" @click.prevent="goPage('store')">Multi Toko</a></li>
             </template>
             <template x-if="isOwner">
               <li><a href="#" :class="{ active: page === 'settings' }" @click.prevent="goPage('settings')">Pengaturan</a></li>
@@ -197,6 +217,16 @@
             <div
               x-data="settingsModule()"
               x-init="await initModulePage($data, '/modules/settings/settings.html'); await init();"
+            >
+              <div x-ref="moduleRoot"></div>
+            </div>
+          </template>
+
+          <!-- [MULTI-STORE] Modul manajemen multi-toko -->
+          <template x-if="page === 'store' && isOwner && user">
+            <div
+              x-data="storeModule()"
+              x-init="await initModulePage($data, '/modules/store/store.html'); await init();"
             >
               <div x-ref="moduleRoot"></div>
             </div>

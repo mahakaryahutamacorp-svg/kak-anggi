@@ -61,6 +61,20 @@ body {
   font-weight: 600;
 }
 
+/* [MULTI-STORE] Indikator & switcher toko aktif di header */
+.header-store {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.store-switcher {
+  width: auto;
+  min-width: 130px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+}
+
 /* Layout */
 .layout {
   display: flex;

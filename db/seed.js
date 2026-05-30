@@ -10,6 +10,23 @@ async function hashPassword(password) {
     .join('');
 }
 
+// [MULTI-STORE] Seed 1 toko default (id=1) supaya data lama tidak orphan.
+export async function seedStores() {
+  const existing = await db.stores.get(1);
+  if (!existing) {
+    await db.stores.put({
+      id: 1,
+      kode_toko: 'TOKO-01',
+      nama_toko: 'Toko Utama',
+      alamat: '',
+      telepon: '',
+      is_active: 1,
+      is_default: 1,
+      created_at: new Date().toISOString()
+    });
+  }
+}
+
 export async function seedUsers() {
   const count = await db.users.count();
   if (count === 0) {
@@ -129,6 +146,7 @@ export async function seedSuppliers() {
 async function runSeed() {
   try {
     await db.open();
+    await seedStores(); // [MULTI-STORE]
     await seedUsers();
     await seedMenu();
     await seedCustomers();

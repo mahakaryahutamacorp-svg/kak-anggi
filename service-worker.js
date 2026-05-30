@@ -1,4 +1,4 @@
-const CACHE_NAME = 'm3-chicken-pos-v7';
+const CACHE_NAME = 'm3-chicken-pos-v8';
 
 const ASSETS = [
   './',
@@ -37,7 +37,9 @@ const ASSETS = [
   './modules/history/history.js',
   './modules/history/history.html',
   './modules/settings/settings.js',
-  './modules/settings/settings.html'
+  './modules/settings/settings.html',
+  './modules/store/store.js',
+  './modules/store/store.html'
 ];
 
 self.addEventListener('install', (event) => {

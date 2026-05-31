@@ -1,0 +1,135 @@
+<div class="card pos-card no-print">
+  <h2 class="section-title">Transaksi POS</h2>
+  <div class="pos-grid">
+    <div class="pos-menu-panel">
+      <h3>Daftar Menu</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Harga</th>
+            <th>Stok</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="item in menuList" :key="item.id">
+            <tr>
+              <td x-text="item.nama"></td>
+              <td x-text="formatRupiah(item.harga)"></td>
+              <td x-text="item.stok"></td>
+              <td>
+                <button type="button" class="btn-primary btn-sm" @click="addToCart(item)" :disabled="item.stok <= 0">+</button>
+              </td>
+            </tr>
+          </template>
+          <template x-if="!menuList.length">
+            <tr><td colspan="4" class="text-muted">Belum ada menu. Tambahkan di halaman Menu (owner).</td></tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pos-cart-panel">
+      <h3>Keranjang</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>Menu</th><th>Qty</th><th>Subtotal</th><th></th></tr>
+        </thead>
+        <tbody>
+          <template x-for="item in cart" :key="item.id">
+            <tr>
+              <td x-text="item.nama"></td>
+              <td>
+                <input
+                  type="number"
+                  min="1"
+                  class="qty-input"
+                  x-model.number="item.qty"
+                  @change="changeQty(item)"
+                >
+              </td>
+              <td x-text="formatRupiah(item.qty * item.harga)"></td>
+              <td>
+                <button type="button" class="btn-secondary btn-sm" @click="removeFromCart(item.id)">×</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label>Metode Pembayaran</label>
+        <select class="input-field" x-model="paymentMethod">
+          <option value="tunai">Tunai</option>
+          <option value="qris">QRIS</option>
+          <option value="transfer">Transfer</option>
+        </select>
+      </div>
+
+      <div class="cart-total">
+        Total: <span x-text="formatRupiah(total)"></span>
+      </div>
+
+      <button
+        type="button"
+        class="btn-primary btn-block"
+        style="margin-top:1rem;"
+        @click="checkout"
+        :disabled="processing || !cart.length"
+        x-text="processing ? 'Memproses...' : 'Selesai & Cetak Struk'"
+      ></button>
+
+      <button
+        type="button"
+        class="btn-secondary btn-block"
+        style="margin-top:0.5rem;"
+        x-show="lastReceipt"
+        @click="printReceipt"
+      >
+        Cetak Ulang Struk
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Struk thermal — hanya tampil saat print -->
+<template x-if="lastReceipt">
+  <div id="receipt-print" class="receipt-thermal">
+    <div class="receipt-header">
+      <strong x-text="lastReceipt.business.name"></strong>
+      <div>🍗 Ayam Goreng & Minuman</div>
+    </div>
+    <div class="receipt-meta">
+      <div x-text="lastReceipt.business.address"></div>
+      <div>Telp: <span x-text="lastReceipt.business.phone"></span></div>
+      <div>Owner: <span x-text="lastReceipt.business.owner"></span></div>
+      <hr>
+      <div>No: #<span x-text="lastReceipt.orderId"></span></div>
+      <div><span x-text="lastReceipt.tanggal"></span> <span x-text="lastReceipt.waktu"></span></div>
+      <div>Kasir: <span x-text="lastReceipt.kasir"></span></div>
+      <div>Bayar: <span x-text="lastReceipt.paymentMethod"></span></div>
+    </div>
+    <hr>
+    <table class="receipt-items">
+      <template x-for="row in lastReceipt.items" :key="row.nama + row.qty">
+        <tr>
+          <td colspan="2" x-text="row.nama"></td>
+        </tr>
+        <tr>
+          <td x-text="row.qty + ' x ' + formatRupiah(row.harga)"></td>
+          <td class="receipt-right" x-text="formatRupiah(row.subtotal)"></td>
+        </tr>
+      </template>
+    </table>
+    <hr>
+    <div class="receipt-total">
+      <span>TOTAL</span>
+      <span x-text="formatRupiah(lastReceipt.total)"></span>
+    </div>
+    <div class="receipt-footer">
+      <p>Terima kasih — Selamat menikmati!</p>
+      <p>*** M3 Chicken ***</p>
+    </div>
+  </div>
+</template>

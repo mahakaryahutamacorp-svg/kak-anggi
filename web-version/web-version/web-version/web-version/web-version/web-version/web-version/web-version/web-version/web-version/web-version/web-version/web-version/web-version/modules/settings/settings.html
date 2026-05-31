@@ -1,0 +1,47 @@
+<div class="card">
+  <h2 class="section-title">Pengaturan Aplikasi</h2>
+  <p class="text-muted" x-show="!isOwner">Hanya owner yang dapat mengubah pengaturan.</p>
+
+  <form @submit.prevent="save" x-show="isOwner">
+    <div class="form-group">
+      <label>Nama Bisnis</label>
+      <input class="input-field" x-model="form.businessName" required>
+    </div>
+    <div class="form-group">
+      <label>Nama Owner</label>
+      <input class="input-field" x-model="form.ownerName">
+    </div>
+    <div class="form-group">
+      <label>No. Telepon</label>
+      <input class="input-field" x-model="form.phone">
+    </div>
+    <div class="form-group">
+      <label>Alamat</label>
+      <input class="input-field" x-model="form.address">
+    </div>
+    <div class="form-group">
+      <label>Footer Struk</label>
+      <input class="input-field" x-model="form.receiptFooter">
+    </div>
+    <div class="form-group">
+      <label>Batas Minimum Stok (untuk alert)</label>
+      <input class="input-field input-narrow" type="number" min="0" x-model.number="form.lowStockThreshold">
+    </div>
+    <p class="form-error" x-show="error" x-text="error"></p>
+    <p class="backup-success" x-show="saved">Pengaturan tersimpan ✓</p>
+    <div style="display:flex;gap:0.5rem;">
+      <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Menyimpan...' : 'Simpan Pengaturan'"></button>
+      <button type="button" class="btn-secondary" @click="resetDefaults()">Reset ke Default</button>
+    </div>
+  </form>
+
+  <div class="settings-info" style="margin-top:1.5rem;">
+    <h3 class="section-subtitle">Info Sistem</h3>
+    <table class="data-table">
+      <tr><td>Aplikasi</td><td>M3 Chicken POS</td></tr>
+      <tr><td>Versi</td><td>1.1.0 Standalone</td></tr>
+      <tr><td>Database</td><td>IndexedDB (Dexie) + SQLite (auth)</td></tr>
+      <tr><td>Mode Login</td><td>Hybrid: API → Fallback Dexie</td></tr>
+    </table>
+  </div>
+</div>

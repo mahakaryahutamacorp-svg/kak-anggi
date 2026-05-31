@@ -1,0 +1,97 @@
+<div class="card">
+  <h2 class="section-title">Buku Besar Toko (General Ledger)</h2>
+  <p class="text-muted" x-show="usingApi">
+  Penjualan di rekap harian diambil dari database server. Entri manual (cash in/out) tetap disimpan lokal di browser.
+  </p>
+  <p x-show="error" class="form-error" x-text="error"></p>
+  <p x-show="loading" class="text-muted">Memuat data...</p>
+
+  <form @submit.prevent="addEntry" class="inline-form">
+    <select class="input-field" x-model="form.tipe" required>
+      <option value="cash-in">Cash In</option>
+      <option value="cash-out">Cash Out</option>
+    </select>
+    <input class="input-field flex-grow" x-model="form.deskripsi" placeholder="Deskripsi" required>
+    <input class="input-field input-narrow" x-model.number="form.nominal" type="number" min="0" placeholder="Nominal" required>
+    <input class="input-field" x-model="form.kategori" placeholder="Kategori" required>
+    <button type="submit" class="btn-primary">Tambah</button>
+  </form>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Tipe</th>
+        <th>Deskripsi</th>
+        <th>Kategori</th>
+        <th>Nominal</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="entry in ledgerList" :key="entry.id">
+        <tr>
+          <td x-text="entry.tanggal"></td>
+          <td x-text="entry.tipe"></td>
+          <td x-text="entry.deskripsi"></td>
+          <td x-text="entry.kategori"></td>
+          <td x-text="formatRupiah(entry.nominal)"></td>
+          <td>
+            <button type="button" class="btn-secondary btn-sm btn-danger-text" @click="deleteEntry(entry.id)">Hapus</button>
+          </td>
+        </tr>
+      </template>
+      <template x-if="!loading && !ledgerList.length">
+        <tr>
+          <td colspan="6" class="text-muted">Belum ada entri. Tambahkan cash in/out di form atas, atau lakukan transaksi di halaman POS.</td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+
+  <h3 class="section-subtitle">Rekap Harian</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Penjualan</th>
+        <th>Cash In</th>
+        <th>Cash Out</th>
+        <th>Profit/Loss</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="rekap in rekapHarian" :key="rekap.tanggal">
+        <tr>
+          <td x-text="rekap.tanggal"></td>
+          <td x-text="formatRupiah(rekap.penjualan)"></td>
+          <td x-text="formatRupiah(rekap.cashIn)"></td>
+          <td x-text="formatRupiah(rekap.cashOut)"></td>
+          <td x-text="formatRupiah(rekap.profit)"></td>
+        </tr>
+      </template>
+      <template x-if="!loading && !rekapHarian.length">
+        <tr>
+          <td colspan="5" class="text-muted">Belum ada rekap. Data muncul setelah ada transaksi POS atau entri buku besar.</td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+</div>
+
+<div class="card backup-panel">
+  <h3 class="section-subtitle">Backup & Restore Data (Owner)</h3>
+  <p class="text-muted">
+    Ekspor/impor data lokal (menu, pelanggan, orders, ledger) dari IndexedDB browser.
+    Gunakan backup berkala sebelum reinstall atau pindah mesin.
+  </p>
+  <div class="backup-actions">
+    <button type="button" class="btn-primary" @click="exportBackup">Export Backup JSON</button>
+    <label class="btn-secondary backup-upload-label">
+      <span x-text="importing ? 'Memproses restore...' : 'Import / Restore JSON'"></span>
+      <input type="file" accept=".json,application/json" class="backup-file-input" @change="handleImportFile($event)" :disabled="importing">
+    </label>
+  </div>
+  <p x-show="backupMessage" x-text="backupMessage" class="backup-success"></p>
+  <p x-show="backupError" x-text="backupError" class="form-error"></p>
+</div>

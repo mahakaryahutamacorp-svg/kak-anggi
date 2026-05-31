@@ -1,0 +1,88 @@
+<!-- [MULTI-STORE] Template UI manajemen multi-toko -->
+<div class="card">
+  <h2 class="section-title">Manajemen Multi Toko</h2>
+  <p class="text-muted">
+    Kelola daftar toko/cabang. Tentukan toko default dan pilih toko aktif untuk transaksi kasir.
+  </p>
+
+  <div class="supplier-summary">
+    <div>
+      <span class="text-muted">Total toko</span>
+      <strong x-text="storeList.length"></strong>
+    </div>
+    <div>
+      <span class="text-muted">Toko aktif (kasir)</span>
+      <strong x-text="(storeList.find((s) => Number(s.id) === Number(currentStoreId)) || {}).nama_toko || '-'"></strong>
+    </div>
+  </div>
+
+  <form @submit.prevent="saveStore" class="inline-form" x-show="isOwner">
+    <input class="input-field input-narrow" x-model="form.kode_toko" placeholder="Kode Toko" required>
+    <input class="input-field flex-grow" x-model="form.nama_toko" placeholder="Nama Toko" required>
+    <input class="input-field flex-grow" x-model="form.alamat" placeholder="Alamat">
+    <input class="input-field" x-model="form.telepon" placeholder="No. Telepon">
+    <select class="input-field" x-model.number="form.is_active">
+      <option value="1">Aktif</option>
+      <option value="0">Nonaktif</option>
+    </select>
+    <button type="submit" class="btn-primary" x-text="form.id ? 'Update' : 'Tambah'"></button>
+    <button type="button" class="btn-secondary" x-show="form.id" @click="resetForm()">Batal</button>
+  </form>
+
+  <p x-show="error" x-text="error" class="form-error"></p>
+
+  <div class="form-group" style="margin-top:1rem;">
+    <input class="input-field" x-model="search" placeholder="Cari toko...">
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Kode</th>
+        <th>Nama Toko</th>
+        <th>Alamat</th>
+        <th>Telepon</th>
+        <th>Status</th>
+        <th>Default</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="s in filteredStores" :key="s.id">
+        <tr>
+          <td x-text="s.kode_toko"></td>
+          <td>
+            <span x-text="s.nama_toko"></span>
+            <span class="role-badge" x-show="Number(s.id) === Number(currentStoreId)">Aktif</span>
+          </td>
+          <td x-text="s.alamat || '-'"></td>
+          <td x-text="s.telepon || '-'"></td>
+          <td>
+            <span :class="s.is_active ? 'badge-in' : 'badge-out'"
+                  x-text="s.is_active ? 'Aktif' : 'Nonaktif'"></span>
+          </td>
+          <td>
+            <span class="role-badge" x-show="s.is_default">Default</span>
+            <span class="text-muted" x-show="!s.is_default">-</span>
+          </td>
+          <td>
+            <button type="button" class="btn-secondary btn-sm" @click="selectStore(s.id)"
+                    x-show="Number(s.id) !== Number(currentStoreId)">Pilih</button>
+            <template x-if="isOwner">
+              <span>
+                <button type="button" class="btn-secondary btn-sm" @click="editStore(s)">Edit</button>
+                <button type="button" class="btn-secondary btn-sm" @click="setDefault(s.id)"
+                        x-show="!s.is_default">Set Default</button>
+                <button type="button" class="btn-secondary btn-sm btn-danger-text"
+                        @click="deleteStore(s.id)" x-show="!s.is_default">Hapus</button>
+              </span>
+            </template>
+          </td>
+        </tr>
+      </template>
+      <template x-if="!filteredStores.length">
+        <tr><td colspan="7" class="text-muted">Belum ada data toko.</td></tr>
+      </template>
+    </tbody>
+  </table>
+</div>

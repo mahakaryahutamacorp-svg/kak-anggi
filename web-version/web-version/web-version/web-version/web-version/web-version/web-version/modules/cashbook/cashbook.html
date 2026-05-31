@@ -1,0 +1,89 @@
+<div class="card">
+  <h2 class="section-title">Catatan Keuangan Pribadi (Cashbook Owner)</h2>
+  <p class="text-muted">
+    Buku besar pribadi terpisah dari kas toko. Catat manual pemasukan/pengeluaran harian
+    (gaji karyawan, sewa, belanja bahan, dll.) untuk laporan bulanan.
+  </p>
+
+  <div class="cashbook-summary">
+    <div class="stat-card stat-in">
+      <span>Total Pemasukan</span>
+      <strong x-text="formatRupiah(summary.totalIn)"></strong>
+    </div>
+    <div class="stat-card stat-out">
+      <span>Total Pengeluaran</span>
+      <strong x-text="formatRupiah(summary.totalOut)"></strong>
+    </div>
+    <div class="stat-card stat-balance" :class="{ 'negative': summary.saldo < 0 }">
+      <span>Saldo Bersih</span>
+      <strong x-text="formatRupiah(summary.saldo)"></strong>
+    </div>
+  </div>
+
+  <form @submit.prevent="saveEntry" class="inline-form">
+    <input class="input-field" type="date" x-model="form.tanggal" required>
+    <select class="input-field" x-model="form.tipe" @change="form.kategori = categoryOptions[0]">
+      <option value="cash-in">Pemasukan</option>
+      <option value="cash-out">Pengeluaran</option>
+    </select>
+    <select class="input-field" x-model="form.kategori">
+      <template x-for="cat in categoryOptions" :key="cat">
+        <option :value="cat" x-text="cat"></option>
+      </template>
+    </select>
+    <input class="input-field flex-grow" x-model="form.deskripsi" placeholder="Deskripsi" required>
+    <input class="input-field input-narrow" type="number" min="0" x-model.number="form.nominal" placeholder="Nominal" required>
+    <button type="submit" class="btn-primary" x-text="form.id ? 'Update' : 'Tambah'"></button>
+    <button type="button" class="btn-secondary" x-show="form.id" @click="resetForm()">Batal</button>
+  </form>
+
+  <div class="cashbook-filter">
+    <label>
+      Bulan:
+      <input type="month" class="input-field" x-model="filter.month" @change="loadEntries()">
+    </label>
+    <label>
+      Tipe:
+      <select class="input-field" x-model="filter.tipe" @change="loadEntries()">
+        <option value="all">Semua</option>
+        <option value="cash-in">Pemasukan</option>
+        <option value="cash-out">Pengeluaran</option>
+      </select>
+    </label>
+    <button type="button" class="btn-secondary" @click="exportCsv()">Export CSV</button>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Tipe</th>
+        <th>Kategori</th>
+        <th>Deskripsi</th>
+        <th>Nominal</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="e in entries" :key="e.id">
+        <tr>
+          <td x-text="e.tanggal"></td>
+          <td>
+            <span :class="e.tipe === 'cash-in' ? 'badge-in' : 'badge-out'"
+                  x-text="e.tipe === 'cash-in' ? 'Masuk' : 'Keluar'"></span>
+          </td>
+          <td x-text="e.kategori"></td>
+          <td x-text="e.deskripsi"></td>
+          <td :class="e.tipe === 'cash-in' ? 'text-success' : 'text-danger'" x-text="formatRupiah(e.nominal)"></td>
+          <td>
+            <button type="button" class="btn-secondary btn-sm" @click="editEntry(e)">Edit</button>
+            <button type="button" class="btn-secondary btn-sm btn-danger-text" @click="deleteEntry(e.id)">Hapus</button>
+          </td>
+        </tr>
+      </template>
+      <template x-if="!entries.length">
+        <tr><td colspan="6" class="text-muted">Belum ada catatan untuk filter ini.</td></tr>
+      </template>
+    </tbody>
+  </table>
+</div>

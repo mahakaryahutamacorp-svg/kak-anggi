@@ -1,4 +1,4 @@
-import { db } from '../../db/schema.js';
+import { API_BASE } from '../../modules/shared/dataService.js';
 
 export const DEFAULT_SETTINGS = {
   businessName: 'M3 Chicken',
@@ -12,11 +12,16 @@ export const DEFAULT_SETTINGS = {
 let cache = null;
 
 export async function loadSettings() {
-  await db.open();
-  const rows = await db.settings.toArray();
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-  cache = { ...DEFAULT_SETTINGS, ...map };
-  return cache;
+  try {
+    const settings = await fetch(`${API_BASE}/settings`).then(res => res.json());
+    if (settings.error) throw new Error(settings.error);
+    cache = { ...DEFAULT_SETTINGS, ...settings };
+    return cache;
+  } catch (err) {
+    console.error('Error loading settings from API:', err);
+    cache = { ...DEFAULT_SETTINGS }; // Fallback to default if API fails
+    return cache;
+  }
 }
 
 export function getCachedSettings() {
@@ -24,13 +29,20 @@ export function getCachedSettings() {
 }
 
 export async function saveSettings(partial) {
-  await db.open();
-  const entries = Object.entries(partial);
-  await db.transaction('rw', db.settings, async () => {
-    for (const [key, value] of entries) {
-      await db.settings.put({ key, value });
+  try {
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(partial)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Gagal menyimpan pengaturan');
     }
-  });
-  await loadSettings();
-  return cache;
+    cache = { ...cache, ...data }; // Update cache with saved settings
+    return cache;
+  } catch (err) {
+    console.error('Error saving settings to API:', err);
+    throw err; // Re-throw to propagate error to UI
+  }
 }

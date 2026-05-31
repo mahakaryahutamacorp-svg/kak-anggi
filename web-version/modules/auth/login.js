@@ -1,30 +1,7 @@
-import { API_BASE } from './config.js';
-import { db } from '../../db/schema.js';
+import { API_BASE } from '../shared/dataService.js'; // [MULTI-STORE] Ambil API_BASE dari dataService
 
 const HEALTH_TIMEOUT_MS = 2000;
 const LOGIN_TIMEOUT_MS = 6000;
-
-async function hashPassword(password) {
-  const data = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function saveSession(user, token) {
-  localStorage.setItem('m3chicken_token', token);
-  localStorage.setItem(
-    'm3chicken_user',
-    JSON.stringify({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      nama: user.nama,
-      telepon: user.telepon || ''
-    })
-  );
-}
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
   const controller = new AbortController();
@@ -41,6 +18,20 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
   }
 }
 
+function saveSession(user, token) {
+  localStorage.setItem('m3chicken_token', token);
+  localStorage.setItem(
+    'm3chicken_user',
+    JSON.stringify({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      nama: user.nama,
+      telepon: user.telepon || ''
+    })
+  );
+}
+
 export function loginForm() {
   return {
     username: '',
@@ -49,7 +40,7 @@ export function loginForm() {
     info: 'Siap login — memeriksa server...',
     loading: false,
     backendOnline: false,
-    authMode: 'offline',
+    authMode: 'api', // Always API mode for web version
 
     get buttonLabel() {
       return this.loading ? 'Memverifikasi...' : 'Login';
@@ -57,33 +48,32 @@ export function loginForm() {
 
     async checkBackend() {
       console.log('[M3 Login] Memeriksa ketersediaan backend:', API_BASE);
-      this.authMode = 'offline';
       this.backendOnline = false;
-      this.info = 'Mode offline — bisa login via database lokal.';
+      this.info = 'Backend aktif — login via server MySQL.';
 
       try {
         const res = await fetchWithTimeout(
-          `${API_BASE}/api/health`,
+          `${API_BASE}/health`,
           { method: 'GET' },
           HEALTH_TIMEOUT_MS
         );
         if (res.ok) {
           this.backendOnline = true;
-          this.authMode = 'api';
-          this.info = 'Backend aktif — login via server SQLite.';
           console.log('[M3 Login] Backend ONLINE — mode API');
         } else {
           console.warn('[M3 Login] Backend merespons error HTTP:', res.status);
+          this.info = 'Backend tidak merespons (status: ' + res.status + ').';
         }
       } catch (err) {
-        console.warn('[M3 Login] Backend tidak terjangkau:', err.message, '— mode offline');
+        console.warn('[M3 Login] Backend tidak terjangkau:', err.message);
+        this.info = 'Backend tidak terjangkau — pastikan URL API benar.';
       }
     },
 
     async loginViaApi() {
-      console.log('[M3 Login] → Login via API (SQLite backend)');
+      console.log('[M3 Login] → Login via API (MySQL backend)');
       const res = await fetchWithTimeout(
-        `${API_BASE}/api/auth/login`,
+        `${API_BASE}/auth`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -102,21 +92,6 @@ export function loginForm() {
       console.log('[M3 Login] ✓ Berhasil via API — role:', data.user.role);
     },
 
-    async loginViaDexie() {
-      console.log('[M3 Login] → Login via Dexie (IndexedDB lokal)');
-      if (!window.Dexie) {
-        throw new Error('Dexie belum dimuat. Restart aplikasi.');
-      }
-      await db.open();
-      const hash = await hashPassword(this.password);
-      const user = await db.users.where('username').equals(this.username.trim()).first();
-      if (!user || user.password !== hash) {
-        throw new Error('Username atau password salah.');
-      }
-      saveSession(user, `offline-${user.id}`);
-      console.log('[M3 Login] ✓ Berhasil via Dexie — role:', user.role);
-    },
-
     async submit() {
       console.log('[M3 Login] Tombol Login diklik — mode:', this.authMode);
       this.error = '';
@@ -129,17 +104,7 @@ export function loginForm() {
       this.loading = true;
 
       try {
-        if (this.authMode === 'api') {
-          try {
-            await this.loginViaApi();
-            window.location.reload();
-            return;
-          } catch (apiErr) {
-            console.warn('[M3 Login] API gagal, lanjut Dexie:', apiErr.message);
-          }
-        }
-
-        await this.loginViaDexie();
+        await this.loginViaApi();
         window.location.reload();
       } catch (err) {
         console.error('[M3 Login] ✗ Login gagal:', err);

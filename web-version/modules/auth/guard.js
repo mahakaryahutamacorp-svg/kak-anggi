@@ -1,4 +1,4 @@
-import { API_BASE, getAuthToken } from './config.js';
+import { API_BASE, getAuthToken } from '../shared/dataService.js'; // [MULTI-STORE] Ambil API_BASE & getAuthToken dari dataService
 
 export function getCurrentUser() {
   try {
@@ -20,10 +20,9 @@ export function isLoggedIn() {
 export async function verifySession() {
   const token = getAuthToken();
   if (!token) return null;
-  if (token.startsWith('offline-')) return getCurrentUser();
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/me`, {
+    const res = await fetch(`${API_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) {
@@ -35,6 +34,8 @@ export async function verifySession() {
     localStorage.setItem('m3chicken_user', JSON.stringify(data.user));
     return data.user;
   } catch {
-    return getCurrentUser();
+    localStorage.removeItem('m3chicken_token');
+    localStorage.removeItem('m3chicken_user');
+    return null;
   }
 }

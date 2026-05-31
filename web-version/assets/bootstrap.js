@@ -18,7 +18,7 @@ import { initModulePage } from '../modules/shared/loadHtml.js';
 window.m3chickenAuth = { getCurrentUser, requireRole, isLoggedIn, logout };
 window.initModulePage = initModulePage;
 
-// Global factories for x-data="module()" calls in portable runtime
+// Global factories for x-data="module()" calls
 window.appState = appState;
 window.loginForm = loginForm;
 window.menuModule = menuModule;
@@ -51,8 +51,11 @@ function registerAlpineComponents() {
   Alpine.data('storeModule', storeModule); // [MULTI-STORE]
 }
 
+// Alpine initialization
 document.addEventListener('alpine:init', registerAlpineComponents);
 
+// If Alpine is already defined (e.g., loaded before DOMContentLoaded)
+// This can happen in some environments like Neutralino's or when script is deferred
 if (typeof Alpine !== 'undefined') {
   registerAlpineComponents();
 }

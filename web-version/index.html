@@ -31,10 +31,10 @@
     });
   </script>
   <script src="./lib/tailwind.js"></script>
-  <script src="./lib/dexie.js"></script>
-  <script>window.M3_API_BASE_URL = window.location.origin;</script>
-  <script type="module" src="./db/schema.js"></script>
-  <script type="module" src="./db/seed.js"></script>
+  <!-- [MULTI-STORE] Dexie.js dan db/schema.js/db/seed.js dihapus karena tidak lagi offline mode -->
+  <!-- <script src="./lib/dexie.js"></script> -->
+  <!-- <script type="module" src="./db/schema.js"></script> -->
+  <!-- <script type="module" src="./db/seed.js"></script> -->
   <script type="module" src="./assets/bootstrap.js"></script>
   <script defer src="./lib/alpine.js"></script>
 </head>
@@ -243,15 +243,25 @@
     </div>
   </div>
 
-  <script src="./js/neutralino.js"></script>
+  <!-- [MULTI-STORE] Script Neutralino.js dihapus karena ini aplikasi web -->
+  <!-- <script src="./js/neutralino.js"></script> -->
   <script>
-    if (typeof Neutralino !== 'undefined' && typeof window.NL_PORT !== 'undefined') {
-      Neutralino.init();
-    }
-    if ('serviceWorker' in navigator && (typeof Neutralino === 'undefined' || typeof window.NL_PORT === 'undefined')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js').catch(() => {});
-      });
+    // [MULTI-STORE] Hapus inisialisasi Neutralino dan service worker.
+    // Service worker mungkin tetap diperlukan untuk PWA.
+    // if (typeof Neutralino !== 'undefined' && typeof window.NL_PORT !== 'undefined') {
+    //   Neutralino.init();
+    // }
+    // if ('serviceWorker' in navigator && (typeof Neutralino === 'undefined' || typeof window.NL_PORT === 'undefined')) {
+    //   window.addEventListener('load', () => {
+    //     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    //   });
+    // }
+
+    // Jika service worker tetap diperlukan untuk PWA web, aktifkan kembali:
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js').catch((err) => console.error('Service worker registration failed:', err));
+        });
     }
   </script>
 </body>

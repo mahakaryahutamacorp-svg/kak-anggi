@@ -1,0 +1,33 @@
+<div class="card">
+  <h2 class="section-title">Manajemen Data Pelanggan</h2>
+  <form @submit.prevent="saveCustomer" class="inline-form">
+    <input class="input-field flex-grow" x-model="form.nama" placeholder="Nama Pelanggan" required>
+    <input class="input-field" x-model="form.telepon" placeholder="No. Telepon">
+    <input class="input-field" x-model="form.alamat" placeholder="Alamat">
+    <button type="submit" class="btn-primary">Simpan</button>
+    <button type="button" class="btn-secondary" x-show="form.id" @click="resetForm()">Batal</button>
+  </form>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Telepon</th>
+        <th>Alamat</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="item in customerList" :key="item.id">
+        <tr>
+          <td x-text="item.nama"></td>
+          <td x-text="item.telepon || '-'"></td>
+          <td x-text="item.alamat || '-'"></td>
+          <td>
+            <button type="button" class="btn-secondary btn-sm" @click="editCustomer(item)">Edit</button>
+            <button type="button" class="btn-secondary btn-sm btn-danger-text" @click="deleteCustomer(item.id)">Hapus</button>
+          </td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+</div>

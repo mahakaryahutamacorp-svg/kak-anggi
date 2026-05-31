@@ -1,0 +1,82 @@
+<div>
+  <div class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">Selamat Datang, <span x-text="user?.nama"></span></h1>
+      <p class="text-muted">
+        Role: <strong x-text="user?.role"></strong> &middot; <span x-text="settings.businessName"></span>
+      </p>
+    </div>
+    <button type="button" class="btn-secondary" @click="refresh()">Refresh</button>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card stat-in">
+      <span>Omzet Hari Ini</span>
+      <strong x-text="formatRupiah(stats.todaySales)"></strong>
+      <small><span x-text="stats.todayOrders"></span> transaksi</small>
+    </div>
+    <div class="stat-card stat-balance">
+      <span>Omzet Bulan Ini</span>
+      <strong x-text="formatRupiah(stats.monthSales)"></strong>
+      <small><span x-text="stats.monthOrders"></span> transaksi</small>
+    </div>
+    <div class="stat-card">
+      <span>Total Pelanggan</span>
+      <strong x-text="stats.totalCustomers"></strong>
+    </div>
+    <div class="stat-card">
+      <span>Total Menu</span>
+      <strong x-text="stats.totalMenu"></strong>
+    </div>
+    <template x-if="isOwner">
+      <div class="stat-card stat-out" :class="{ 'positive': stats.totalHutang === 0 }">
+        <span>Hutang ke Supplier</span>
+        <strong x-text="formatRupiah(stats.totalHutang)"></strong>
+        <small><span x-text="stats.totalSuppliers"></span> supplier</small>
+      </div>
+    </template>
+    <template x-if="isOwner">
+      <div class="stat-card" :class="stats.cashbookSaldo >= 0 ? 'stat-in' : 'stat-out'">
+        <span>Saldo Cashbook Pribadi</span>
+        <strong x-text="formatRupiah(stats.cashbookSaldo)"></strong>
+      </div>
+    </template>
+  </div>
+
+  <div class="dashboard-row">
+    <div class="card" style="flex:1;min-width:320px;">
+      <h3 class="section-subtitle" style="margin-top:0;">⚠️ Stok Rendah / Habis</h3>
+      <p class="text-muted" x-show="!lowStock.length">Semua stok aman.</p>
+      <table class="data-table" x-show="lowStock.length">
+        <thead><tr><th>Menu</th><th>Kategori</th><th>Stok</th></tr></thead>
+        <tbody>
+          <template x-for="m in lowStock" :key="m.id">
+            <tr>
+              <td x-text="m.nama"></td>
+              <td x-text="m.kategori"></td>
+              <td :class="m.stok <= 0 ? 'text-danger' : 'text-warning'" x-text="m.stok"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="flex:1;min-width:320px;">
+      <h3 class="section-subtitle" style="margin-top:0;">🧾 Transaksi Terbaru</h3>
+      <p class="text-muted" x-show="!recentOrders.length">Belum ada transaksi.</p>
+      <table class="data-table" x-show="recentOrders.length">
+        <thead><tr><th>#</th><th>Tanggal</th><th>Kasir</th><th>Total</th></tr></thead>
+        <tbody>
+          <template x-for="o in recentOrders" :key="o.id">
+            <tr>
+              <td x-text="'#' + o.id"></td>
+              <td x-text="o.tanggal"></td>
+              <td x-text="o.kasirNama || o.kasir"></td>
+              <td x-text="formatRupiah(o.total)"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

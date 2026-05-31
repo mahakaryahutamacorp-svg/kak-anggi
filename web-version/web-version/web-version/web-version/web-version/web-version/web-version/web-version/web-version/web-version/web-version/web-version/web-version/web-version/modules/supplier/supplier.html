@@ -1,0 +1,70 @@
+<div class="card">
+  <h2 class="section-title">Data Supplier</h2>
+  <p class="text-muted">
+    Catat pemasok bahan baku (ayam, beras, minuman, kemasan) beserta saldo hutang yang belum dibayar.
+  </p>
+
+  <div class="supplier-summary">
+    <div>
+      <span class="text-muted">Total supplier</span>
+      <strong x-text="supplierList.length"></strong>
+    </div>
+    <div>
+      <span class="text-muted">Total hutang</span>
+      <strong class="text-danger" x-text="formatRupiah(totalHutang)"></strong>
+    </div>
+  </div>
+
+  <form @submit.prevent="saveSupplier" class="inline-form" x-show="isOwner">
+    <input class="input-field flex-grow" x-model="form.nama" placeholder="Nama Supplier" required>
+    <input class="input-field" x-model="form.kategori" placeholder="Kategori (Ayam/Sembako/dll)">
+    <input class="input-field" x-model="form.kontak" placeholder="Nama Kontak (PIC)">
+    <input class="input-field" x-model="form.telepon" placeholder="No. Telepon">
+    <input class="input-field flex-grow" x-model="form.alamat" placeholder="Alamat">
+    <input class="input-field input-narrow" type="number" min="0" x-model.number="form.hutang" placeholder="Hutang (Rp)">
+    <input class="input-field flex-grow" x-model="form.catatan" placeholder="Catatan">
+    <button type="submit" class="btn-primary" x-text="form.id ? 'Update' : 'Tambah'"></button>
+    <button type="button" class="btn-secondary" x-show="form.id" @click="resetForm()">Batal</button>
+  </form>
+
+  <div class="form-group" style="margin-top:1rem;">
+    <input class="input-field" x-model="search" placeholder="Cari supplier...">
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Kategori</th>
+        <th>Kontak</th>
+        <th>Telepon</th>
+        <th>Alamat</th>
+        <th>Hutang</th>
+        <th>Catatan</th>
+        <template x-if="isOwner"><th>Aksi</th></template>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="s in filteredSuppliers" :key="s.id">
+        <tr>
+          <td x-text="s.nama"></td>
+          <td x-text="s.kategori || '-'"></td>
+          <td x-text="s.kontak || '-'"></td>
+          <td x-text="s.telepon || '-'"></td>
+          <td x-text="s.alamat || '-'"></td>
+          <td :class="{ 'text-danger': Number(s.hutang) > 0 }" x-text="formatRupiah(s.hutang)"></td>
+          <td x-text="s.catatan || '-'"></td>
+          <template x-if="isOwner">
+            <td>
+              <button type="button" class="btn-secondary btn-sm" @click="editSupplier(s)">Edit</button>
+              <button type="button" class="btn-secondary btn-sm btn-danger-text" @click="deleteSupplier(s.id)">Hapus</button>
+            </td>
+          </template>
+        </tr>
+      </template>
+      <template x-if="!filteredSuppliers.length">
+        <tr><td colspan="8" class="text-muted">Belum ada data supplier.</td></tr>
+      </template>
+    </tbody>
+  </table>
+</div>

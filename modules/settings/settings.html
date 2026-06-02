@@ -35,12 +35,44 @@
     </div>
   </form>
 
+  <div class="settings-info" style="margin-top:1.5rem;" x-show="isOwner">
+    <h3 class="section-subtitle">Backup Database ke Device</h3>
+    <p class="text-muted">
+      Unduh salinan seluruh data dari database server ke perangkat ini.
+      File <strong>.sql</strong> bisa di-restore ke MySQL (mis. via phpMyAdmin),
+      sedangkan <strong>.json</strong> berguna untuk arsip/pemindahan data.
+    </p>
+    <template x-if="!canBackup">
+      <p class="form-error">
+        Backup server hanya aktif saat terhubung ke database server (mode online).
+      </p>
+    </template>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
+      <button
+        type="button"
+        class="btn-primary"
+        :disabled="!canBackup || backingUp"
+        @click="backupSql()"
+        x-text="backingUp === 'sql' ? 'Menyiapkan...' : 'Backup .sql (MySQL)'"
+      ></button>
+      <button
+        type="button"
+        class="btn-secondary"
+        :disabled="!canBackup || backingUp"
+        @click="backupJson()"
+        x-text="backingUp === 'json' ? 'Menyiapkan...' : 'Backup .json'"
+      ></button>
+    </div>
+    <p class="form-error" x-show="backupError" x-text="backupError"></p>
+    <p class="backup-success" x-show="backupInfo" x-text="backupInfo"></p>
+  </div>
+
   <div class="settings-info" style="margin-top:1.5rem;">
     <h3 class="section-subtitle">Info Sistem</h3>
     <table class="data-table">
       <tr><td>Aplikasi</td><td>M3 Chicken POS</td></tr>
-      <tr><td>Versi</td><td>1.1.0 Standalone</td></tr>
-      <tr><td>Database</td><td>IndexedDB (Dexie) + SQLite (auth)</td></tr>
+      <tr><td>Versi</td><td>1.2.0</td></tr>
+      <tr><td>Database</td><td>IndexedDB (offline) + SQLite/MySQL (server)</td></tr>
       <tr><td>Mode Login</td><td>Hybrid: API → Fallback Dexie</td></tr>
     </table>
   </div>
